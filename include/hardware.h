@@ -50,6 +50,8 @@ int read_cr0();
 
 int read_cr2();
 
+unsigned int get_cr2();
+
 void write_cr0(int value);
 
 void __sti(void);

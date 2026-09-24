@@ -11,11 +11,35 @@
 
 extern Gate idt[IDT_ENTRIES];
 extern Register idtR;
-extern void pf_handler();
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
 void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
 
 void setIdt();
+
+typedef struct {
+    unsigned int edx;
+    unsigned int ecx;
+    unsigned int ebx;
+    unsigned int esi;
+    unsigned int edi;
+    unsigned int ebp;
+    unsigned int eax;
+    unsigned int ds;
+    unsigned int es;
+    unsigned int fs;
+    unsigned int gs;
+    unsigned int error_code;
+    unsigned int eip;
+    unsigned int cs;
+    unsigned int eflags;
+    unsigned int esp;
+    unsigned int ss;
+} page_fault_stack_t;
+
+extern void pf_handler(void);
+void pf_routine(page_fault_stack_t *stack);
+
+extern void keyboard_handler(void);
 
 #endif  /* __INTERRUPT_H__ */

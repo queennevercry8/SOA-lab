@@ -96,7 +96,7 @@ ENTRY(return_gate)
 ENTRY(enable_int)
     pushl %ebp
     movl %esp, %ebp
-    movb $0xff, %al /* 0xFF = 11111111 -> all bits disabled */
+    movb $0xfd, %al /* 0xFC = 11111101 -> IRQ0 (clock) and IRQ1 (keyboard) enabled */
     outb %al, $0x21
     call delay
     sti

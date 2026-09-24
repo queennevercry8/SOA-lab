@@ -56,17 +56,16 @@
       outb %al, $0x20;	\
 
 #define RESTORE_ALL \
-      popl %edx;
-      popl %ecx;
-      popl %ebx;
-      popl %esi;
-      popl %edi;
-      popl %ebp;
-      popl %eax;
-      popl %edx;
-      popl %ds;
-      popl %es;
-      popl %fs;
+      popl %edx; \
+      popl %ecx; \
+      popl %ebx; \
+      popl %esi; \
+      popl %edi; \
+      popl %ebp; \
+      popl %eax; \
+      popl %ds; \
+      popl %es; \
+      popl %fs; \
       popl %gs;
 
 ENTRY(pf_handler)
@@ -79,5 +78,10 @@ ENTRY(pf_handler)
 	addl $4, %esp; //eliminamos el error pusheado de la pila
 	iret;
 
-	
+ENTRY(keyboard_handler)
+	SAVE_ALL
+	EOI
+	call keyboard_routine;
+	RESTORE_ALL
+	iret;
 	
