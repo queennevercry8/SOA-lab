@@ -70,7 +70,6 @@
 
 ENTRY(pf_handler)
 	SAVE_ALL
-	//CHECKS??
 	pushl %esp;
 	call pf_routine;
 	addl $4, %esp;	
@@ -80,8 +79,14 @@ ENTRY(pf_handler)
 
 ENTRY(keyboard_handler)
 	SAVE_ALL
-	EOI
 	call keyboard_routine;
+      EOI
 	RESTORE_ALL
 	iret;
 	
+ENTRY(clock_handler)
+      SAVE_ALL    
+      call clock_routine;
+      EOI
+      RESTORE_ALL
+      iret;

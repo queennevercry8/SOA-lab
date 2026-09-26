@@ -82,7 +82,7 @@
 .globl enable_int; .type enable_int, @function; .align 0; enable_int:
     pushl %ebp
     movl %esp, %ebp
-    movb $0xfd, %al
+    movb $0xfc, %al
     outb %al, $0x21
     call delay
     sti

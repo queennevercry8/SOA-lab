@@ -37,9 +37,16 @@ typedef struct {
     unsigned int ss;
 } page_fault_stack_t;
 
+extern char* itoa_hex(int a, char *b);
+
 extern void pf_handler(void);
 void pf_routine(page_fault_stack_t *stack);
 
 extern void keyboard_handler(void);
+
+void keyboard_routine();
+
+extern void clock_handler(void);
+void clock_routine();
 
 #endif  /* __INTERRUPT_H__ */

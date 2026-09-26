@@ -33,32 +33,33 @@ static const unsigned char char_map[128] = {
     0,   0,   0,   0,   0,   0,   0,   0      /* 0x78 - 0x7F */
 };
 
-void itoa(int a, char *word)
+/*char* itoa_hex(unsigned int a, char *word)
 {
   char hex_digits[] = "0123456789ABCDEF";
   int i, reverse;
   char c;
   
-  if (a==0) { word[0]='0'; word[1]=0; return ;}
+  if (a == 0) { word[0] = '0'; word[1] = 0; return word; }
   
-  i=0;
-  while (a>0)
+  i = 0;
+  while (a > 0)
   {
-    word[i]=hex_digits[(a%16)];
-    a=a/16;
+    word[i] = hex_digits[(a % 16)];
+    a = a / 16;
     i++;
   }
   
-  for (reverse=0; reverse<i/2; reverse++)
+  for (reverse = 0; reverse < i / 2; reverse++)
   {
-    c=word[reverse];
-    word[reverse]=word[i-reverse-1];
-    word[i-reverse-1]=c;
+    c = word[reverse];
+    word[reverse] = word[i - reverse - 1];
+    word[i - reverse - 1] = c;
   }
-  word[i]=0;
+  word[i] = 0;
+  
+  return word; // Devolvemos el puntero para que coincida con la firma original
 }
-
-
+*/
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
 {
   /***********************************************************************/
@@ -115,6 +116,8 @@ void setIdt()
   /* ADD INITIALIZATION CODE FOR INTERRUPT VECTOR */
   setInterruptHandler(14, pf_handler, 0);
   setInterruptHandler(33, keyboard_handler, 0);
+  setInterruptHandler(32, clock_handler, 0);
+
   set_idt_reg(&idtR);
 }
 
@@ -122,17 +125,15 @@ void setIdt()
 void pf_routine(page_fault_stack_t *stack){
 	int cr2 = read_cr2();
 	char hex_direction[10];
-	itoa(cr2, hex_direction);
 
-
-	printk("\n");
-	printk("Process generates a PAGE FAULT exception at EIP: 0x");
-	itoa(stack->eip, hex_direction);
-	printk(hex_direction);
+  printk("\n");
+	printk("Process generates a PAGE FAULT exception at EIP: ");
+	printk(itoa_hex(stack->eip, hex_direction));
 	printk("\n");
 
-	printk("Offending address: 0x");
-	printk(hex_direction);
+  
+	printk("Offending address: ");
+	printk(itoa_hex(cr2, hex_direction));
 	printk("\n");	
 
 	printk("CPU registers value: \n");
@@ -140,9 +141,8 @@ void pf_routine(page_fault_stack_t *stack){
 	for(int i = 0; i < 17; ++i)
 	{
 		printk(register_name[i]);
-		printk(": 0x");
-		itoa(regs[i], hex_direction);
-		printk(hex_direction);
+		printk(": ");
+		printk(itoa_hex(regs[i], hex_direction));
 		printk("\n");
 	}
 
@@ -154,7 +154,7 @@ void keyboard_routine() {
     unsigned char key;
     unsigned char is_make;
 
-    scan_code = inb(0x60);
+    scan_code = inb(0x60); //port corresponding to the keyboard data register is 0x60
 
     /* Bit 7 indicates make (0) or break (1) */
     is_make = (scan_code & 0x80) == 0;
@@ -169,4 +169,7 @@ void keyboard_routine() {
     }
 }
 
+void clock_routine() {
+    zeos_show_clock();
+}
 

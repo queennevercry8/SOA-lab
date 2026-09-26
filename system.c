@@ -65,7 +65,7 @@ int __attribute__((__section__(".text.main")))
   copy_data((void *) KERNEL_START + *p_sys_size, (void*)L_USER_START, *p_usr_size);
 
   printk("    MEOW :3\n");
-  printk("     |\\___/,|   (`\\\n");  // <-- Cambiado a \\ para que imprima las barras reales
+  printk("     |\\___/,|   (`\\\n"); 
   printk("   _.| o o  |_   ) )\n");
   printk("----(((---(((---------\n");
   printk("Entering user mode...");
