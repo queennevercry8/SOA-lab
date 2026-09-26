@@ -12,32 +12,26 @@
 Gate idt[IDT_ENTRIES];
 Register    idtR;
 
-typedef struct stack{
-	//contexto SW
-	int edx;
-	int ecx;
-	int ebx;
-	int esi;
-	int edi;
-	int ebp;
-	int eax;
-
-	int ds;
-	int es;
-	int fs;
-	int gs;
-
-
-	//contexto HW del PF
-	int error_code;
-	int eip;
-	int cs;
-	int eflags;
-	int esp;
-	int ss;
-} page_fault_stack_t;
-
 char* register_name[] = {"EDX","ECX","EBX","ESI","EDI","EBP","EAX","DS","ES","FS","GS","ERROR_CODE","EIP","CS","EFLAGS","ESP","SS"};
+
+static const unsigned char char_map[128] = {
+    0,   27,  '1', '2', '3', '4', '5', '6',   /* 0x00 - 0x07 */
+    '7', '8', '9', '0', '-', '=', '\b','\t',  /* 0x08 - 0x0F */
+    'q', 'w', 'e', 'r', 't', 'y', 'u', 'i',   /* 0x10 - 0x17 */
+    'o', 'p', '[', ']', '\n', 0,  'a', 's',   /* 0x18 - 0x1F */
+    'd', 'f', 'g', 'h', 'j', 'k', 'l', ';',   /* 0x20 - 0x27 */
+    '\'','`', 0,   '\\','z', 'x', 'c', 'v',   /* 0x28 - 0x2F */
+    'b', 'n', 'm', ',', '.', '/', 0,   '*',   /* 0x30 - 0x37 */
+    0,   ' ', 0,   0,   0,   0,   0,   0,     /* 0x38 - 0x3F */
+    0,   0,   0,   0,   0,   0,   0,   '7',   /* 0x40 - 0x47 */
+    '8', '9', '-', '4', '5', '6', '+', '1',   /* 0x48 - 0x4F */
+    '2', '3', '0', '.', 0,   0,   0,   0,     /* 0x50 - 0x57 */
+    0,   0,   0,   0,   0,   0,   0,   0,     /* 0x58 - 0x5F */
+    0,   0,   0,   0,   0,   0,   0,   0,     /* 0x60 - 0x67 */
+    0,   0,   0,   0,   0,   0,   0,   0,     /* 0x68 - 0x6F */
+    0,   0,   0,   0,   0,   0,   0,   0,     /* 0x70 - 0x77 */
+    0,   0,   0,   0,   0,   0,   0,   0      /* 0x78 - 0x7F */
+};
 
 void itoa(int a, char *word)
 {
@@ -120,6 +114,7 @@ void setIdt()
 
   /* ADD INITIALIZATION CODE FOR INTERRUPT VECTOR */
   setInterruptHandler(14, pf_handler, 0);
+  setInterruptHandler(33, keyboard_handler, 0);
   set_idt_reg(&idtR);
 }
 
@@ -129,14 +124,16 @@ void pf_routine(page_fault_stack_t *stack){
 	char hex_direction[10];
 	itoa(cr2, hex_direction);
 
-	printk(":< Offending address: 0x");
-	printk(hex_direction);
-	printk("\n");	
 
+	printk("\n");
 	printk("Process generates a PAGE FAULT exception at EIP: 0x");
 	itoa(stack->eip, hex_direction);
 	printk(hex_direction);
 	printk("\n");
+
+	printk("Offending address: 0x");
+	printk(hex_direction);
+	printk("\n");	
 
 	printk("CPU registers value: \n");
 	int *regs = (int *) stack;
@@ -152,5 +149,24 @@ void pf_routine(page_fault_stack_t *stack){
 	while(1);
 }
 
+void keyboard_routine() {
+    unsigned char scan_code;
+    unsigned char key;
+    unsigned char is_make;
+
+    scan_code = inb(0x60);
+
+    /* Bit 7 indicates make (0) or break (1) */
+    is_make = (scan_code & 0x80) == 0;
+
+    if (is_make) {
+        /* Mask the high bit to get the scan code index */
+        key = char_map[scan_code & 0x7F];
+
+        /* If the key is not a printable ASCII character, show 'C' */
+        if (key == 0 || key < 32 || key > 126) key = 'C';
+        printc_xy(0, 0, key);
+    }
+}
 
 
