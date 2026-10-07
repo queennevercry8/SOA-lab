@@ -1,0 +1,16 @@
+# Artefactos de compilación
+*.o
+*.a
+*.out
+*.bin
+*.s
+
+# Ejecutables
+bootsect
+build
+system
+user
+libzeos.a
+
+# Logs
+bochsout.txt
