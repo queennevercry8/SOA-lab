@@ -33,33 +33,6 @@ static const unsigned char char_map[128] = {
     0,   0,   0,   0,   0,   0,   0,   0      /* 0x78 - 0x7F */
 };
 
-/*char* itoa_hex(unsigned int a, char *word)
-{
-  char hex_digits[] = "0123456789ABCDEF";
-  int i, reverse;
-  char c;
-  
-  if (a == 0) { word[0] = '0'; word[1] = 0; return word; }
-  
-  i = 0;
-  while (a > 0)
-  {
-    word[i] = hex_digits[(a % 16)];
-    a = a / 16;
-    i++;
-  }
-  
-  for (reverse = 0; reverse < i / 2; reverse++)
-  {
-    c = word[reverse];
-    word[reverse] = word[i - reverse - 1];
-    word[i - reverse - 1] = c;
-  }
-  word[i] = 0;
-  
-  return word; // Devolvemos el puntero para que coincida con la firma original
-}
-*/
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL)
 {
   /***********************************************************************/
@@ -118,6 +91,8 @@ void setIdt()
   setInterruptHandler(33, keyboard_handler, 0);
   setInterruptHandler(32, clock_handler, 0);
 
+  setTrapHandler(0x93, system_call_handler, 3);
+
   set_idt_reg(&idtR);
 }
 
@@ -171,5 +146,6 @@ void keyboard_routine() {
 
 void clock_routine() {
     zeos_show_clock();
+    zeos_ticks++;
 }
 

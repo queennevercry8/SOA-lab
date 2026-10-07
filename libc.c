@@ -6,6 +6,8 @@
 
 #include <types.h>
 
+#include <errno.h>
+
 int errno;
 
 void itoa(int a, char *b)
@@ -41,5 +43,14 @@ int strlen(char *a)
   while (a[i]!=0) i++;
   
   return i;
+}
+
+void perror(void){
+  if(errno == EBADF) write(1, "Bad file descriptor\n", 24);
+  else if (errno == EACCES) write(1, "Permission denied\n", 24);
+  else if (errno == EFAULT) write(1, "Bad address\n", 24);
+  else if (errno == EINVAL) write(1, "Invalid argument\n", 24);
+  else if (errno == ENOSYS) write(1, "Function not implemented\n", 24);
+  else if (errno == ENOBUFS) write(1, "No buffer space available\n", 24);
 }
 

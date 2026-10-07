@@ -11,6 +11,7 @@
 
 extern Gate idt[IDT_ENTRIES];
 extern Register idtR;
+extern int zeos_ticks;
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
 void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
@@ -48,5 +49,7 @@ void keyboard_routine();
 
 extern void clock_handler(void);
 void clock_routine();
+
+extern void system_call_handler(void);
 
 #endif  /* __INTERRUPT_H__ */

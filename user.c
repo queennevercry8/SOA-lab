@@ -21,6 +21,19 @@ int __attribute__ ((__section__(".text.main")))
      /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
 
 	//asm_result = addAsm(result, 51914);
+  perror();
+  char *message = "Hello World from ZeOS!\n";
+  write(1, message, 30);
+
+  for(int i = 0; i < 100000; i++);
+
+  int ticks = gettime();
+
+  char time_message[256];
+  itoa(ticks, time_message);
+
+  write(1, "Ticks since boot: ", strlen("Ticks since boot: "));
+  write(1, time_message, strlen(time_message));
 
   while(1) { }
 }
