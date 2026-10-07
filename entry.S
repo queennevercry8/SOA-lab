@@ -70,7 +70,6 @@
 
 ENTRY(pf_handler)
 	SAVE_ALL
-	//CHECKS??
 	pushl %esp;
 	call pf_routine;
 	addl $4, %esp;	
@@ -80,8 +79,30 @@ ENTRY(pf_handler)
 
 ENTRY(keyboard_handler)
 	SAVE_ALL
-	EOI
 	call keyboard_routine;
+      EOI
 	RESTORE_ALL
 	iret;
 	
+ENTRY(clock_handler)
+      SAVE_ALL
+      EOI    
+      call clock_routine;
+      RESTORE_ALL
+      iret;
+
+ENTRY(system_call_handler)
+      SAVE_ALL
+      cmpl $0, %eax
+      jl err 
+      cmpl $MAX_SYSCALL, %eax
+      jge err
+      call *sys_call_table(, %eax, 4)
+      jmp fin
+err:
+      movl $-38, %eax   //ENOSYS = -38
+fin:
+      movl %eax, 0x18(%esp)   //preservamos el valor de eax
+      RESTORE_ALL
+      iret
+

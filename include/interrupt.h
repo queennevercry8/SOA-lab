@@ -11,6 +11,7 @@
 
 extern Gate idt[IDT_ENTRIES];
 extern Register idtR;
+extern int zeos_ticks;
 
 void setInterruptHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
 void setTrapHandler(int vector, void (*handler)(), int maxAccessibleFromPL);
@@ -37,9 +38,18 @@ typedef struct {
     unsigned int ss;
 } page_fault_stack_t;
 
+extern char* itoa_hex(int a, char *b);
+
 extern void pf_handler(void);
 void pf_routine(page_fault_stack_t *stack);
 
 extern void keyboard_handler(void);
+
+void keyboard_routine();
+
+extern void clock_handler(void);
+void clock_routine();
+
+extern void system_call_handler(void);
 
 #endif  /* __INTERRUPT_H__ */

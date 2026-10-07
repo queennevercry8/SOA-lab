@@ -50,7 +50,7 @@ int read_cr0();
 
 int read_cr2();
 
-unsigned int get_cr2();
+//unsigned int get_cr2(); not used
 
 void write_cr0(int value);
 

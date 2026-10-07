@@ -31,7 +31,7 @@
 00000000000i[      ]   SB16 support: no
 00000000000i[      ]   USB support: no
 00000000000i[      ]   VGA extension support: vbe
-00000000000i[MEM0  ] allocated memory at 0x7f33e9716010. after alignment, vector=0x7f33e9717000
+00000000000i[MEM0  ] allocated memory at 0x7f3adfa93010. after alignment, vector=0x7f3adfa94000
 00000000000i[MEM0  ] 16,00MB
 00000000000i[MEM0  ] mem block size = 0x00100000, blocks=16
 00000000000i[MEM0  ] rom at 0xfffe0000/131072 ('/opt/bochs/share/bochs/BIOS-bochs-latest')
@@ -41,7 +41,7 @@
 00000000000i[DEV   ] PIIX3 PCI-to-ISA bridge present at device 1, function 0
 00000000000i[PLUGIN] init_dev of 'cmos' plugin device by virtual method
 00000000000i[CMOS  ] Using local time for initial clock
-00000000000i[CMOS  ] Setting initial clock to: Thu Sep 24 14:16:28 2026 (time0=1790252188)
+00000000000i[CMOS  ] Setting initial clock to: Mon Oct  5 18:43:23 2026 (time0=1791218603)
 00000000000i[PLUGIN] init_dev of 'dma' plugin device by virtual method
 00000000000i[DMA   ] channel 4 used by cascade
 00000000000i[PLUGIN] init_dev of 'pic' plugin device by virtual method
@@ -133,6 +133,7 @@
 00000000000i[XGUI  ] Mouse capture off
 00000000000i[      ] set SIGINT handler to bx_debug_ctrlc_handler
 00000000000i[XGUI  ] Mouse capture off
+00000000000i[XGUI  ] Mouse capture off
 00000004661i[BIOS  ] $Revision: 12412 $ $Date: 2014-07-10 09:28:59 +0200 (Do, 10. Jul 2014) $
 00000318049i[KBD   ] reset-disable command received
 00000320818i[BIOS  ] Starting rombios32
@@ -172,10 +173,9 @@
 00001529176i[BXVGA ] VBE known Display Interface b0c0
 00001529208i[BXVGA ] VBE known Display Interface b0c5
 00001532133i[VBIOS ] VBE Bios $Id: vbe.c,v 1.65 2014/07/08 18:02:25 vruppert Exp $
-00004025744i[XGUI  ] charmap update. Font Height is 16
+00003152340i[XGUI  ] charmap update. Font Height is 16
 00014040191i[BIOS  ] Booting from 0000:7c00
-00022960041i[FLOPPY] partial read() on floppy image returns 316/512
-00023004485i[FLOPPY] read() on floppy image returns 0
+00023004485i[FLOPPY] partial read() on floppy image returns 251/512
 00023048929i[FLOPPY] read() on floppy image returns 0
 00023093373i[FLOPPY] read() on floppy image returns 0
 00023137817i[FLOPPY] read() on floppy image returns 0
@@ -230,5 +230,3 @@
 00025320825i[FLOPPY] read() on floppy image returns 0
 00025365269i[FLOPPY] read() on floppy image returns 0
 00025409713i[FLOPPY] read() on floppy image returns 0
-00996276000e[XGUI  ] xkeypress(): keysym f1 unhandled!
-00996276000e[XGUI  ] xkeypress(): keysym f1 unhandled!

@@ -18,7 +18,7 @@ int (*usr_main)(void) = (void *) (PAG_LOG_INIT_CODE*PAGE_SIZE);
 unsigned int *p_sys_size = (unsigned int *) KERNEL_START;
 unsigned int *p_usr_size = (unsigned int *) KERNEL_START+1;
 unsigned int *p_rdtr = (unsigned int *) KERNEL_START+2;
-
+int zeos_ticks;
 
 /*
  *   Main entry point to ZEOS Operating System
@@ -26,7 +26,6 @@ unsigned int *p_rdtr = (unsigned int *) KERNEL_START+2;
 int __attribute__((__section__(".text.main")))
   main(void)
 {
-
   set_eflags();
 
   /* Define the kernel segment registers  and a stack to execute this 'main' code */
@@ -46,7 +45,7 @@ int __attribute__((__section__(".text.main")))
   setGdt(); /* Definicio de la taula de segments de memoria */
   setIdt(); /* Definicio del vector de interrupcions */
   setTSS(); /* Definicio de la TSS */
-
+  
   /* Initialize Memory */
   init_mm();
 
@@ -65,10 +64,12 @@ int __attribute__((__section__(".text.main")))
   copy_data((void *) KERNEL_START + *p_sys_size, (void*)L_USER_START, *p_usr_size);
 
   printk("    MEOW :3\n");
-  printk("     |\\___/,|   (`\\\n");  // <-- Cambiado a \\ para que imprima las barras reales
+  printk("     |\\___/,|   (`\\\n"); 
   printk("   _.| o o  |_   ) )\n");
   printk("----(((---(((---------\n");
-  printk("Entering user mode...");
+  printk("Entering user mode...\n");
+
+  zeos_ticks = 0;
 
   enable_int();
   /*
