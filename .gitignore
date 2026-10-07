@@ -5,7 +5,7 @@
 *.bin
 *.s
 
-# Ejecutables
+# Ejecutables y binarios generados
 bootsect
 build
 system
