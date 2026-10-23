@@ -25,6 +25,14 @@ void init_idle (void)
 
 void init_task1(void)
 {
+	int Dir = alloc_frame();
+	/* obtain physical page address */
+	page_table_entry *DirAddress = (page_table_entry *) (Dir << 12);
+	clear_page_table(DirAddress);
+
+	int PTS = alloc_frame(); //allocate a PT to store system mapping
+	
+
 }
 
 
@@ -45,3 +53,8 @@ page_table_entry * get_PT (struct task_struct *t)
        return (page_table_entry *)(((unsigned int)(t->dir_pages_baseAddr->bits.pbase_addr))<<12);
 }
 
+/* get address of task_struct given its list_head*/
+struct task_struct *list_head_to_task_struct(struct list_head *l)
+{
+	return list_entry(l, struct task_struct, list);
+}
