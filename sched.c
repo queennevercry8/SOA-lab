@@ -9,6 +9,7 @@
 
 char initial_stack[KERNEL_STACK_SIZE] __attribute__ ((aligned(4096))); // Space for the initial system stack
 struct task_struct * init_task;  
+struct task_struct * idle_task;
 struct list_head readyqueue;
 
 
@@ -23,6 +24,38 @@ void cpu_idle(void)
 
 void init_idle (void)
 {
+	int Dir = alloc_frame(); //page directory for the process
+	page_table_entry *DirAddress_idle = (page_table_entry *) (Dir << 12);
+	clear_page_table(DirAddress_idle);
+
+	int frame_PTSys = init_task->dir_pages_baseAddr[0].bits.pbase_addr; //find system PT frame
+	page_table_entry *PT0 = (page_table_entry *) (frame_PTSys << 12);
+	
+	set_ss_pag(PT0, Dir, Dir, 0); //Map the new directory in the system PT
+
+	set_ss_pag(DirAddress_idle, 0, frame_PTSys, 0); //Map the system PT in the page directory of idle process
+	
+	int PCBframe = alloc_frame(); //allocate new struct task_struct
+	struct task_struct *idlePCB = (struct task_struct *) (PCBframe << 12);
+	set_ss_pag(PT0, PCBframe, PCBframe, 0); //mapping PCB to system PT
+	idlePCB->PID = 0; //assigning PID 0 to the idle process
+	idlePCB->dir_pages_baseAddr = DirAddress_idle; //initialize directory with DirAddress_idle
+
+	//PREPARE STACK
+	/*
+	-----------
+	| %EBP    | <-- stack[KERNEL_STACK_SIZE - 2]
+	-----------
+	|@HANDLER | <-- stack[KERNEL_STACK_SIZE - 1]
+	-----------
+	*/
+
+	union task_union *idle_union = (union task_union *)idlePCB; 
+	idle_union->stack[KERNEL_STACK_SIZE - 1] = (unsigned long) &cpu_idle; //store in stack address of function idle
+	idle_union->stack[KERNEL_STACK_SIZE - 2] = 0;	//store stack initial value of %ebp (0)
+	idlePCB->kernel_esp = &(idle_union->stack[KERNEL_STACK_SIZE - 2]); //the position of the stack with the initial EBP
+
+	idle_task = idlePCB;
 
 }
 
@@ -68,7 +101,7 @@ void init_task1(void)
 
 void init_sched()
 {
-
+	INIT_LIST_HEAD(&readyqueue);
 }
 
 /* get_DIR - Returns the Page Directory address for task 't' */

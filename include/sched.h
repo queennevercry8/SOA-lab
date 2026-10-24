@@ -13,6 +13,7 @@
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 extern struct task_struct * init_task;
+extern struct task_struct *idle_task;
 extern struct list_head readyqueue;
 
 
@@ -20,6 +21,7 @@ struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;
+  unsigned long *kernel_esp;
 
 };
 
