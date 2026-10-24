@@ -97,7 +97,9 @@ ENTRY(system_call_handler)
       jl err 
       cmpl $MAX_SYSCALL, %eax
       jge err
+      pushl %ebx
       call *sys_call_table(, %eax, 4)
+      popl %ebx
       jmp fin
 err:
       movl $-38, %eax   //ENOSYS = -38

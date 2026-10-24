@@ -5,9 +5,12 @@ ENTRY(write)
     movl %esp, %ebp
     
     pushl %ebx
-    movl 8(%ebp), %edx
-    movl 12(%ebp), %ecx
-    movl 16(%ebp), %ebx
+    
+    leal 8(%ebp), %ebx
+
+    //movl 8(%ebp), %edx
+    //movl 12(%ebp), %ecx
+    //movl 16(%ebp), %ebx
 
     movl $4, %eax //identifier of the syscall in the register eax (look at sys_call_table)
     int $0x93

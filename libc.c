@@ -46,11 +46,14 @@ int strlen(char *a)
 }
 
 void perror(void){
-  if(errno == EBADF) write(1, "Bad file descriptor\n", 24);
-  else if (errno == EACCES) write(1, "Permission denied\n", 24);
-  else if (errno == EFAULT) write(1, "Bad address\n", 24);
-  else if (errno == EINVAL) write(1, "Invalid argument\n", 24);
-  else if (errno == ENOSYS) write(1, "Function not implemented\n", 24);
-  else if (errno == ENOBUFS) write(1, "No buffer space available\n", 24);
+  char *buff; 
+  if(errno == EBADF) buff = "Bad file descriptor\n";
+  else if (errno == EACCES) buff = "Permission denied\n";
+  else if (errno == EFAULT) buff = "Bad address\n";
+  else if (errno == EINVAL) buff = "Invalid argument\n";
+  else if (errno == ENOSYS) buff = "Function not implemented\n";
+  else if (errno == ENOBUFS) buff = "No buffer space available\n";
+  else if(errno == NULL) return;
+  write(1, buff, strlen(buff));
 }
 

@@ -31,29 +31,50 @@ int sys_ni_syscall()
 }
 
 //-----------------------------------------------------------------------
-int sys_write(int fd, char * buffer, int size)
+int sys_write(int *buff)
 {
+  int fd;
+  char *buffer;
+  int size;
+
+ 
+  if (access_ok(VERIFY_READ, buff, 12) == 0) return -14; /* EFAULT */
+
+  int parametros[3];
+  if (copy_from_user(buff, parametros, 12) < 0) return -14; /* EFAULT */
+  
+  fd = parametros[0];
+  buffer = (char *)parametros[1];
+  size = parametros[2];
+
+ 
   int ret = check_fd(fd, ESCRIPTURA);
   if (ret < 0) return ret;
 
-  //In the future we need to check that it is a valid address 
   if(buffer == NULL) return -14; /*EFAULT*/  
   if (size < 0) return -22;    // -EINVAL (Invalid argument)
   if (size == 0) return 0;
 
   //existe mapeo a dirección física?
   if(access_ok(VERIFY_WRITE, buffer, size) == 0) return -14; /*EFAULT*/
-  
-  int bytes_to_copy = (size > 1024) ? 1024 : size;
 
   char kernel_buffer[1024];
-  
-  for(int i = 0; i < bytes_to_copy; i+=256){
-    if(bytes_to_copy%256 != 0 && i + 256 > bytes_to_copy){
-      copy_from_user(buffer + i, kernel_buffer + i, bytes_to_copy%256);
-    } else copy_from_user(buffer + i, kernel_buffer + i, 256);
+  int written = 0;
+  int left = size;
+  while(left > 0){
+    int chunk_size = (left > 1024) ? 1024 : left;
+    if (copy_from_user(buffer + written, kernel_buffer, chunk_size) < 0) {
+        return -14; /* EFAULT */
+    }
+
+    int escrito = sys_write_console(kernel_buffer, chunk_size);
+    if(escrito < 0) return escrito;
+
+    written += chunk_size;
+    left -= chunk_size;
+
   }
-  int written = sys_write_console(kernel_buffer, bytes_to_copy);
+
   return written;
 }
 
