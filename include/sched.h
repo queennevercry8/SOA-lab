@@ -12,11 +12,17 @@
 #define KERNEL_STACK_SIZE	1024
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
+extern struct task_struct * init_task;
+extern struct task_struct *idle_task;
+extern struct list_head readyqueue;
+
 
 struct task_struct {
   int PID;			/* Process ID. This MUST be the first field of the struct. */
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;
+  unsigned long *kernel_esp;
+
 };
 
 union task_union {
@@ -39,10 +45,13 @@ void init_sched(void);
 
 struct task_struct * current();
 
-struct task_struct *list_head_to_task_struct(struct list_head *l);
-
 page_table_entry * get_PT (struct task_struct *t) ;
 
 page_table_entry * get_DIR (struct task_struct *t) ;
+
+struct task_struct *list_head_to_task_struct(struct list_head *l);
+
+extern void task_switch(union task_union *new);
+void inner_task_switch(union task_union *new);
 
 #endif  /* __SCHED_H__ */
