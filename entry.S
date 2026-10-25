@@ -107,4 +107,21 @@ fin:
       movl %eax, 0x18(%esp)   //preservamos el valor de eax
       RESTORE_ALL
       iret
+ENTRY(task_switch)
+      push %ebp
+      movl %esp, %ebp
+      pushl %esi
+      pushl %edi
+      pushl %ebx
+      pushl 8(%ebp) //8(%ebp) se encuentra *new
+      call inner_task_switch
+      addl $4, %esp
+      popl %ebx
+      popl %edi
+      popl %esi
+      movl %ebp, %esp
+      popl %ebp
+      ret
+
+
 

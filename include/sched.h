@@ -51,5 +51,7 @@ page_table_entry * get_DIR (struct task_struct *t) ;
 
 struct task_struct *list_head_to_task_struct(struct list_head *l);
 
+extern void task_switch(union task_union *new);
+void inner_task_switch(union task_union *new);
 
 #endif  /* __SCHED_H__ */

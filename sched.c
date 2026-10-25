@@ -16,6 +16,7 @@ struct list_head readyqueue;
 void cpu_idle(void)
 {
 	__sti();
+	printk("First time entering cpu_idle!\n");
 	while(1)
 	{
 	;
@@ -120,4 +121,19 @@ page_table_entry * get_PT (struct task_struct *t)
 struct task_struct *list_head_to_task_struct(struct list_head *l)
 {
 	return list_entry(l, struct task_struct, list);
+}
+
+/* performs a context change between the current process and the new. 
+	new: pointer to the task_union of the process that will be executed*/
+void inner_task_switch(union task_union *new)
+{
+	tss.esp0 = KERNEL_ESP(new); //update the system stack pointer to the one of the new task
+	set_cr3(new->task.dir_pages_baseAddr); //change the user address space by updating the page directory
+	//__asm__ __volatile__("INSTRUCCIÓN" : [salidas] : [entradas] : [registros modificados]);
+	__asm__ __volatile__("movl %%ebp, %0" : "=m" (current()->kernel_esp));
+	__asm__ __volatile__("movl %0, %%ebp" : : "r" (new->task.kernel_esp));
+	/*es fa esp = new->task.kernel_esp pero amb %ebp perquè al sortir de la funció, 
+	el compilador farà movl %ebp, %esp i sobreescriuria el valor de %esp que volem modificar.
+	Si guardem a %ebp el valor de %esp que volem, a l'hora de fer movl %ebp, %esp obtindrem
+	el valor que volem a %esp */
 }
