@@ -1,5 +1,26 @@
 #include <asm.h>
 
+//TESTEAR ERRORES
+ENTRY(test_enosys)
+      pushl %ebp
+      movl %esp, %ebp
+      movl $0, %eax
+      int $0x93
+      popl %ebp
+      ret
+
+ENTRY(test_sys_write_bad_buff)
+      pushl %ebp
+      movl %esp, %ebp
+      pushl %ebx          
+      movl $0, %ebx       
+      movl $4, %eax       
+      int $0x93
+      popl %ebx
+      popl %ebp
+      ret
+//TESTEAR ERRORES
+
 ENTRY(write)
     pushl %ebp
     movl %esp, %ebp
@@ -52,3 +73,36 @@ fine:
 
     ret  
 
+ENTRY(getpid)
+    pushl %ebp
+    movl %esp, %ebp
+    
+    pushl %ebx
+    movl $20, %eax
+    int $0x93
+
+    popl %ebx
+    movl %ebp, %esp
+    popl %ebp
+    ret  
+
+ENTRY(fork)
+    pushl %ebp
+    movl %esp, %ebp
+    
+    pushl %ebx
+    movl $2, %eax
+    int $0x93
+
+    test %eax, %eax
+    jns np
+
+    negl %eax
+    movl %eax, errno
+    movl $-1, %eax
+
+np: 
+    movl %ebp, %esp
+    popl %ebp
+
+    ret  

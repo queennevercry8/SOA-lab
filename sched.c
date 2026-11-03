@@ -129,11 +129,6 @@ void inner_task_switch(union task_union *new)
 {
 	tss.esp0 = KERNEL_ESP(new); //update the system stack pointer to the one of the new task
 	set_cr3(new->task.dir_pages_baseAddr); //change the user address space by updating the page directory
-	//__asm__ __volatile__("INSTRUCCIÓN" : [salidas] : [entradas] : [registros modificados]);
-	__asm__ __volatile__("movl %%ebp, %0" : "=m" (current()->kernel_esp));
-	__asm__ __volatile__("movl %0, %%ebp" : : "r" (new->task.kernel_esp));
-	/*es fa esp = new->task.kernel_esp pero amb %ebp perquè al sortir de la funció, 
-	el compilador farà movl %ebp, %esp i sobreescriuria el valor de %esp que volem modificar.
-	Si guardem a %ebp el valor de %esp que volem, a l'hora de fer movl %ebp, %esp obtindrem
-	el valor que volem a %esp */
+	current()->kernel_esp = (unsigned long *)get_ebp();
+	set_esp(new->task.kernel_esp);
 }

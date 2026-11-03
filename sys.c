@@ -56,7 +56,7 @@ int sys_write(int *buff)
   if (size == 0) return 0;
 
   //existe mapeo a dirección física?
-  if(access_ok(VERIFY_WRITE, buffer, size) == 0) return -14; /*EFAULT*/
+  if(access_ok(VERIFY_READ, buffer, size) == 0) return -14; /*EFAULT*/
 
   char kernel_buffer[1024];
   int written = 0;
@@ -80,4 +80,12 @@ int sys_write(int *buff)
 
 int sys_gettime(){
   return zeos_ticks;
+}
+
+int sys_getpid(void){
+  return current()->PID;
+}
+
+int sys_fork(void){
+  
 }
