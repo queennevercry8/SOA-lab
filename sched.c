@@ -126,6 +126,9 @@ void init_sched()
    así que el frame que liberamos no es la pila actual. */
 void free_zombies(void)
 {
+	if (list_empty(&zombiequeue))
+        return;
+	
     page_table_entry *sysPT = get_PT(current());
 
     while (!list_empty(&zombiequeue)) {

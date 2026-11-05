@@ -13,6 +13,48 @@ int add(int par1, int par2)
     return par1 + par2;
 }
 
+
+static void test_fork_exit()
+{
+    int i, yo = getpid(), pid;
+    char buf[64];
+
+    /* --- bucle: crear 3 hijos --- */
+    for (i = 0; i < 3; i++) {
+        pid = fork();
+        if (pid < 0) { perror(); exit(); }
+
+        if (pid == 0) {                    /* --- HIJO --- */
+            int n = 0, p = getpid();
+            buf[n++] = 'H'; buf[n++] = 'i'; buf[n++] = 'j'; buf[n++] = 'o';
+            buf[n++] = ' '; buf[n++] = 'P'; buf[n++] = 'I'; buf[n++] = 'D';
+            buf[n++] = '=';
+            if (p == 0) buf[n++] = '0';
+            else { char t[12]; int k = 0;
+                   while (p) { t[k++] = '0' + p % 10; p /= 10; }
+                   while (k) buf[n++] = t[--k]; }
+            buf[n++] = '\n';
+            write(1, buf, n);
+            exit();                       /* el hijo muere: no vuelve al for */
+        }
+    }
+
+    /* --- solo el padre llega aquí --- */
+    {
+        int n = 0, p = yo;
+        char t[12]; int k = 0;
+        buf[n++] = 'P'; buf[n++] = 'a'; buf[n++] = 'd'; buf[n++] = 'r'; buf[n++] = 'e';
+        buf[n++] = ' '; buf[n++] = 'v'; buf[n++] = 'i'; buf[n++] = 'v'; buf[n++] = 'o';
+        buf[n++] = ' '; buf[n++] = 'P'; buf[n++] = 'I'; buf[n++] = 'D'; buf[n++] = '=';
+        if (p == 0) buf[n++] = '0';
+        else { while (p) { t[k++] = '0' + p % 10; p /= 10; }
+               while (k) buf[n++] = t[--k]; }
+        buf[n++] = '\n';
+        write(1, buf, n);
+    }
+    exit();                               /* el padre muere al final */
+}
+
 int addAsm(int, int);
 int test_enosys(void);
 int test_sys_write_bad_buff(void);
@@ -41,23 +83,7 @@ main(void)
     write(1, time_message, strlen(time_message));
     write(1, "\n", 1);
 
-    int pid = fork();
-
-    if (pid == 0)
-    {
-        write(1, "hijo: exit\n", 11);
-        exit();
-        write(1, "NO DEBE SALIR\n", 14); /* si sale, exit está mal */
-    }
-
-    /* padre */
-    for (int i = 0; i < 5; i++)
-    {
-        int t0 = gettime();
-        while (gettime() - t0 < 20)
-            ;
-        write(1, "padre vivo\n", 11);
-    }
+    test_fork_exit();
 
     while (1)
     {
