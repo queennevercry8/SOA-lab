@@ -53,5 +53,7 @@ struct task_struct *list_head_to_task_struct(struct list_head *l);
 
 extern void task_switch(union task_union *new);
 void inner_task_switch(union task_union *new);
+unsigned long get_ebp(void);
+void set_esp(unsigned long *new_esp);
 
 #endif  /* __SCHED_H__ */

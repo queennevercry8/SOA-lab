@@ -2,7 +2,6 @@
 #include <errno.h>
 #include <stddef.h>
 
-
 char buff[24];
 
 int result, asm_result;
@@ -14,36 +13,9 @@ int add(int par1,int par2){
 }
 
 int addAsm(int,int);
+int test_enosys(void);
+int test_sys_write_bad_buff(void);
 
-
-// probar syscalls no implementadas (ENOSYS)
-// Llamar directamente a la syscall 0 que está mapeada a sys_ni_syscall
-int test_enosys(void) {
-    int ret;
-    __asm__ __volatile__(
-        "movl $0, %%eax\n\t"  
-        "int $0x93\n\t"
-        "movl %%eax, %0"
-        : "=r" (ret)
-        :
-        : "%eax"
-    );
-    return ret;
-}
-
-int test_sys_write_bad_buff(void) {
-    int ret;
-    __asm__ __volatile__(
-        "movl $0, %%ebx\n\t"    // Pasamos un puntero NULL como base de parámetros en %ebx
-        "movl $4, %%eax\n\t"    // Syscall write (4)
-        "int $0x93\n\t"
-        "movl %%eax, %0"
-        : "=r" (ret)
-        :
-        : "%eax", "%ebx"
-    );
-    return ret;
-}
 
 int __attribute__ ((__section__(".text.main")))
   main(void)
