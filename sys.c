@@ -17,7 +17,7 @@
 #define ESCRIPTURA 1
 
 extern int zeos_ticks;
-int global_pid;
+extern int global_pid;
 
 int check_fd(int fd, int permissions)
 {

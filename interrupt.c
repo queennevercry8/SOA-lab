@@ -148,7 +148,10 @@ void clock_routine() {
     zeos_show_clock();
     zeos_ticks++;
 
-    //PRUEBA DE TASK_SWITCH
+    //Schedule prueba
+    schedule();
+
+    /*PRUEBA DE TASK_SWITCH
     if (zeos_ticks % 1000 == 0)
     {
         if (current()->PID == 0) // Si estamos en idle (PID 0), cambiamos a init
@@ -172,5 +175,6 @@ void clock_routine() {
           task_switch((union task_union *)idle_task);
         }
     }
+    */
 }
 

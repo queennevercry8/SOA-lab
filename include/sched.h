@@ -10,6 +10,7 @@
 #include <mm_address.h>
 
 #define KERNEL_STACK_SIZE	1024
+#define DEFAULT_QUANTUM		10  //POR DETERMINAR
 
 enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 extern struct task_struct * init_task;
@@ -22,7 +23,8 @@ struct task_struct {
   page_table_entry * dir_pages_baseAddr;
   struct list_head list;
   unsigned long *kernel_esp;
-
+  enum state_t state;		/* ST_RUN, ST_READY or ST_BLOCKED */
+  int quantum;			/* Ticks assigned to this process */
 };
 
 union task_union {
@@ -50,6 +52,13 @@ page_table_entry * get_PT (struct task_struct *t) ;
 page_table_entry * get_DIR (struct task_struct *t) ;
 
 struct task_struct *list_head_to_task_struct(struct list_head *l);
+
+void schedule(void);
+void update_sched_data_rr(void);
+void update_process_state_rr(struct task_struct *t, struct list_head *dest);
+int  needs_sched_rr(void);
+int  get_quantum(struct task_struct *t);
+void set_quantum(struct task_struct *t, int new_quantum);
 
 extern void task_switch(union task_union *new);
 void inner_task_switch(union task_union *new);
