@@ -102,6 +102,7 @@ void init_task1(void)
 
 void init_sched()
 {
+	global_pid = 2;
 	INIT_LIST_HEAD(&readyqueue);
 }
 
@@ -127,8 +128,10 @@ struct task_struct *list_head_to_task_struct(struct list_head *l)
 	new: pointer to the task_union of the process that will be executed*/
 void inner_task_switch(union task_union *new)
 {
-	tss.esp0 = KERNEL_ESP(new); //update the system stack pointer to the one of the new task
-	set_cr3(new->task.dir_pages_baseAddr); //change the user address space by updating the page directory
 	current()->kernel_esp = (unsigned long *)get_ebp();
+	if (current()->PID != new->task.PID){
+		set_cr3(new->task.dir_pages_baseAddr); //change the user address space by updating the page directory
+	}
+	tss.esp0 = KERNEL_ESP(new); //update the system stack pointer to the one of the new task
 	set_esp(new->task.kernel_esp);
 }
