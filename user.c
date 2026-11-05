@@ -39,29 +39,24 @@ main(void)
 
     write(1, "Ticks since boot: ", strlen("Ticks since boot: "));
     write(1, time_message, strlen(time_message));
+    write(1, "\n", 1);
 
     int pid = fork();
+
     if (pid == 0)
     {
-        write(1, "Soy el hijo\n", 12);
-        write(1, "getpid hijo: ", 13);
-        char b[8];
-        itoa(getpid(), b);
-        write(1, b, strlen(b));
-        write(1, "\n", 1);
+        write(1, "hijo: exit\n", 11);
+        exit();
+        write(1, "NO DEBE SALIR\n", 14); /* si sale, exit está mal */
     }
-    else
+
+    /* padre */
+    for (int i = 0; i < 5; i++)
     {
-        write(1, "Soy el padre\n", 13);
-        write(1, "getpid padre: ", 14);
-        char b[8];
-        itoa(getpid(), b);
-        write(1, b, strlen(b));
-        write(1, "\n", 1);
-        write(1, "fork devolvio: ", 15);
-        itoa(pid, b);
-        write(1, b, strlen(b));
-        write(1, "\n", 1);
+        int t0 = gettime();
+        while (gettime() - t0 < 20)
+            ;
+        write(1, "padre vivo\n", 11);
     }
 
     while (1)

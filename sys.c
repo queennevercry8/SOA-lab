@@ -153,9 +153,57 @@ int sys_fork(void){
 
   /* 10. Estado y cola */
   child->task.state = ST_READY;
-  child->task.quantum = DEFAULT_QUANTUM;
+  child->task.quantum = parent->quantum;
   INIT_LIST_HEAD(&child->task.list);
   list_add_tail(&child->task.list, &readyqueue);
 
   return newpid;
+}
+
+void sys_exit(void)
+{
+    struct task_struct *t = current();
+    page_table_entry *sysPT = get_PT(t);
+    page_table_entry *dir = t->dir_pages_baseAddr;
+    int dir_frame = ((unsigned long)dir) >> 12;
+    int ptu_frame = dir[1].bits.pbase_addr;
+
+    /* Si por lo que sea estuviera en una cola, sacarlo. */
+    if (t->state != ST_RUN && t->list.next != 0)
+        list_del(&t->list);
+
+    /* 1. Datos + pila de usuario */
+    if (ptu_frame != 0) {
+        page_table_entry *ptu = (page_table_entry *)(ptu_frame << 12);
+
+        for (int i = 0; i < NUM_PAG_DATA; i++) {
+            int frame = get_frame(ptu, i);
+            if (frame != 0) {
+                del_ss_pag(ptu, i);
+                del_ss_pag(sysPT, frame);
+                free_frame(frame);
+            }
+        }
+
+        /* 2. PT de usuario */
+        del_ss_pag(dir, 1);
+        del_ss_pag(sysPT, ptu_frame);
+        free_frame(ptu_frame);
+    }
+
+    /* 3. Directorio de páginas */
+    del_ss_pag(sysPT, dir_frame);
+    free_frame(dir_frame);
+
+    /* 4. El PCB no se puede liberar todavía: es nuestra pila.
+          Lo dejamos apuntado para que otro lo libere. */
+    t->state = ST_BLOCKED;
+    list_add_tail(&t->list, &zombiequeue);
+
+    /* 5. Elegir otro proceso y cambiar de contexto.
+          Esto NO vuelve a este proceso. */
+    sched_next_rr();
+
+    /*Por si falla*/
+    while (1);
 }

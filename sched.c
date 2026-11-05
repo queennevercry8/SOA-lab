@@ -11,6 +11,7 @@ char initial_stack[KERNEL_STACK_SIZE] __attribute__ ((aligned(4096))); // Space 
 struct task_struct * init_task;  
 struct task_struct * idle_task;
 struct list_head readyqueue;
+struct list_head zombiequeue;
 
 /* Ticks remaining for the process currently running on the CPU */
 static int ticks_left;
@@ -117,7 +118,25 @@ void init_sched()
 {
 	global_pid = 2;
 	INIT_LIST_HEAD(&readyqueue);
+	INIT_LIST_HEAD(&zombiequeue);
 	ticks_left = DEFAULT_QUANTUM;
+}
+
+/* Libera los PCB de procesos ya muertos. Se llama desde otro contexto,
+   así que el frame que liberamos no es la pila actual. */
+void free_zombies(void)
+{
+    page_table_entry *sysPT = get_PT(current());
+
+    while (!list_empty(&zombiequeue)) {
+        struct list_head *l = list_first(&zombiequeue);
+        struct task_struct *z = list_head_to_task_struct(l);
+        int frame = ((unsigned long)z) >> 12;
+
+        list_del(l);
+        del_ss_pag(sysPT, frame);   /* quitar el mapeo identidad del PCB */
+        free_frame(frame);          /* liberar el frame del PCB/pila */
+    }
 }
 
 /* get_quantum - Returns the quantum of task 't' */
@@ -195,6 +214,8 @@ void sched_next_rr(void)
 void schedule(void)
 {
 	struct task_struct *cur;
+
+	free_zombies();  
 
 	update_sched_data_rr();
 

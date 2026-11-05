@@ -16,6 +16,7 @@ enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 extern struct task_struct * init_task;
 extern struct task_struct *idle_task;
 extern struct list_head readyqueue;
+extern struct list_head zombiequeue;
 extern int global_pid;
 
 
@@ -67,5 +68,7 @@ unsigned long get_ebp(void);
 void set_esp(unsigned long *new_esp);
 
 extern void ret_from_fork(void);
+
+void free_zombies(void);
 
 #endif  /* __SCHED_H__ */
