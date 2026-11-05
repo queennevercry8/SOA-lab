@@ -13,11 +13,13 @@
 
 #include <sched.h>
 
+#include <errno.h>
+
 #define LECTURA 0
 #define ESCRIPTURA 1
 
 extern int zeos_ticks;
-extern int global_pid;
+int global_pid;
 
 int check_fd(int fd, int permissions)
 {
@@ -88,96 +90,72 @@ int sys_getpid(void){
 }
 
 int sys_fork(void){
-  //1. Allocate frame for task struct
+  struct task_struct *parent = current();
+  page_table_entry *sysPT = get_PT(parent);   // PT de sistema (entrada 0)
+
+  /* 1. PCB del hijo: mapear ANTES de usarlo */
   int taskFrameID = alloc_frame();
-  if(taskFrameID == -1){
-    errno = ENOMEM;
-    return -1;
-  }
-  union task_union *childunion = (union task_union *) (taskFrameID << 12);
-  //struct task_struct  *childPCB = &(childunion->task); 
-  
-  //inherit system data by copying the parent's task_union
-  copy_data(current(), childunion, sizeof(union task_union));
+  if (taskFrameID < 0) return -ENOMEM;
+  set_ss_pag(sysPT, taskFrameID, taskFrameID, 0);
 
-  //2. Allocate frame for page directory
+  /* 2. Directorio de páginas del hijo */
   int PDframeID = alloc_frame();
-  if(PDframeID == -1 ){
-    errno = ENOMEM;
-    return -1;
-  }
-  page_table_entry *PageDir = (page_table_entry *) (PDframeID << 12);
-  clear_page_table(PageDir);
+  if (PDframeID < 0) return -ENOMEM;
+  set_ss_pag(sysPT, PDframeID, PDframeID, 0);
 
-  //2.1.Shared System PT with the child + assign the child's PCB his own Page Directory
-  
-  /* ALTERNATIVA DIAPOSITIVAS
-    int childPTSframe = alloc_frame();
-    if (childPTSframe == -1){
-      errno = ENOMEM;
-      return -1;
-    }
-    page_table_entry *ChildPT = (page_table_entry *)(childPTSframe << 12);
-    clear_page_table(ChildPT);
-    PageDir[0].entry = (current()->dir_pages_baseAddr[0].entry;
-    page_table_entry *ParentPT = get_PT(current());
-
-    int frameID;
-    for (frameID = KERNEL_STAR_PAGE; frameID <= KERNEL_END_PAGE; frameID++){
-        // Obtain the physical frame associated to a logical frame
-        int map = get_frame(ParentPT, frameID);
-        // Map the frame in the same entry of the child’s PT
-        set_ss_frame(ChildPT, frameID, map);
-    }
-  
-  */
-  
-  PageDir[0].entry = current()->dir_pages_baseAddr[0].entry;
-  
-  childunion->task.dir_pages_baseAddr = PageDir;
-
-  //2.2. Inherit user data
+  /* 3. PT de usuario del hijo */
   int childPTframe = alloc_frame();
-  if(childPTframe == -1){
-    errno = ENOMEM;
-    return -1;
-  }
+  if (childPTframe < 0) return -ENOMEM;
+  set_ss_pag(sysPT, childPTframe, childPTframe, 0);
+
+  union task_union *child = (union task_union *)(taskFrameID << 12);
+  page_table_entry *childDir = (page_table_entry *)(PDframeID << 12);
   page_table_entry *childPTU = (page_table_entry *)(childPTframe << 12);
-  
-  page_table_entry *parentPTU = current()->dir_pages_baseAddr[1];
-  //2.2.1.Map user code
-  for(int i = NUM_PAG_DATA; i < NUM_PAG_DATA + NUM_PAG_CODE; i++){
-    set_ss_pag(childPTU, i, get_frame(parentPTU, i), 1 );
+  page_table_entry *parentPTU =
+      (page_table_entry *)(parent->dir_pages_baseAddr[1].bits.pbase_addr << 12);
+
+  /* 4. Copiar task_union del padre (incluye la pila de kernel) */
+  copy_data(parent, child, sizeof(union task_union));
+
+  /* 5. Directorio: compartir PT de sistema + PT de usuario nueva */
+  clear_page_table(childDir);
+  childDir[0].entry = parent->dir_pages_baseAddr[0].entry;
+  set_ss_pag(childDir, 1, childPTframe, 1);   // esto faltaba (PageDir[1])
+  child->task.dir_pages_baseAddr = childDir;
+
+  /* 6. Código compartido (índices 20..27 = PAG_LOG_INIT_CODE & 0x3FF) */
+  clear_page_table(childPTU);                 // esto faltaba
+  for (int i = NUM_PAG_DATA; i < NUM_PAG_DATA + NUM_PAG_CODE; i++) {
+    set_ss_pag(childPTU, i, get_frame(parentPTU, i), 1);
+    childPTU[i].bits.rw = 0;                  // código solo lectura
   }
 
-  //2.2.2. Map data + stack in new frames
-  //TO FINISH I AM TIRED PLS END THIS SUFFERING
-
-  int tmpmapping = NUM_PAG_CODE + NUM_PAG_DATA;
-
-  for(int i = 0; i<NUM_PAG_DATA; i++){
-
-    int frame = alloc_frame(); //reservar frame físico
-    if(frame == -1){
-      errno = NOMEM;
-      return -1;
-    }
-
-    set_ss_pag(childPTU, i, frame, 1); //mapear en la tabla del hijo el frame físico
-
-    set_ss_pag(parentPTU, tmpmapping, frame, 1 );
-
-    char *src_addr = (char *) ((0x400 + i) << 12);
-    char *dest_addr = (char *) ((0x400 + tmpmapping) << 12);
-    copy_data(src_addr, dest_addr, 4096);
-    del_ss_pag(parentPTU, tmpmapping);
+  /* 7. Datos + pila: frames nuevos, copiados por la PT de sistema */
+  for (int i = 0; i < NUM_PAG_DATA; i++) {
+    int frame = alloc_frame();
+    if (frame < 0) return -ENOMEM;
+    set_ss_pag(sysPT, frame, frame, 0);       // visible desde el kernel
+    set_ss_pag(childPTU, i, frame, 1);
+    copy_data((void *)(L_USER_START + i * PAGE_SIZE),
+              (void *)(frame << 12), PAGE_SIZE);
   }
 
-  set_cr3(current()->dir_pages_baseAddr);
-  
-  int newpid = global_pid++;        //hay que poner robustez a las colisiones
-  childunion->task.PID = newpid;
+  /* 8. PID */
+  int newpid = global_pid++;
+  child->task.PID = newpid;
 
-  
-  
+  /* 9. Forjar el contexto de retorno del hijo (fork devuelve 0) */
+  unsigned long *ksp = (unsigned long *) KERNEL_ESP(child);
+  ksp[-18] = 0;                               // EBP falso
+  ksp[-17] = (unsigned long)ret_from_fork;    // retorno de set_esp
+  ksp[-10] = 0;                               // EAX guardado = 0
+  child->task.kernel_esp = (unsigned long *)&ksp[-18];
+
+  /* 10. Estado y cola */
+  child->task.state = ST_READY;
+  child->task.quantum = DEFAULT_QUANTUM;
+  INIT_LIST_HEAD(&child->task.list);
+  list_add_tail(&child->task.list, &readyqueue);
+
+  return newpid;
 }

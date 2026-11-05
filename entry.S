@@ -107,6 +107,11 @@ fin:
       movl %eax, 0x18(%esp)   //preservamos el valor de eax
       RESTORE_ALL
       iret
+
+ENTRY(ret_from_fork)
+      RESTORE_ALL
+      iret
+
 ENTRY(task_switch)
       push %ebp
       movl %esp, %ebp

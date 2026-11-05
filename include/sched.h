@@ -16,6 +16,7 @@ enum state_t { ST_RUN, ST_READY, ST_BLOCKED };
 extern struct task_struct * init_task;
 extern struct task_struct *idle_task;
 extern struct list_head readyqueue;
+extern int global_pid;
 
 
 struct task_struct {
@@ -64,5 +65,7 @@ extern void task_switch(union task_union *new);
 void inner_task_switch(union task_union *new);
 unsigned long get_ebp(void);
 void set_esp(unsigned long *new_esp);
+
+extern void ret_from_fork(void);
 
 #endif  /* __SCHED_H__ */
