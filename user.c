@@ -16,10 +16,25 @@ int addAsm(int,int);
 int test_enosys(void);
 int test_sys_write_bad_buff(void);
 
+void test_cyclic_printing() {
+    char *textos[] = {
+        "Uno\n",
+        "Dos\n",
+        "Tres\n"
+    };
+    
+    int num_textos = sizeof(textos) / sizeof(textos[0]);
+    
+    for (int i = 0; i < 33; i++) {
+        int indice = i % num_textos;
+        
+        write(1, textos[indice], strlen(textos[indice]));
+    }
+}
+
 int global_var = 100; // Variable global para testear copia en copia (COW lógico)
 
-// 1. Test básico de jerarquía y padre que hace exit antes (o después)
-static void test_basic_fork() {
+void test_basic_fork() {
     char buff[20];
 
     int pid = fork();
@@ -42,7 +57,7 @@ static void test_basic_fork() {
         exit();
     } else {
         // PADRE
-        write(1, "Soy el padre. Mi PID es ", 23);
+        write(1, "Soy el padre. Mi PID es ", 24);
         int p = getpid();
         itoa(p, buff);
         write(1, buff, 2);
@@ -55,8 +70,7 @@ static void test_basic_fork() {
     }
 }
 
-// 2. Test de hijos haciendo fork (árbol / fork en cascada)
-static void test_nested_fork() {
+void test_nested_fork() {
     char buff[20];
 
     int pid = fork();
@@ -102,12 +116,10 @@ static void test_nested_fork() {
     exit();
 }
 
-// 3. Test de estrés de memoria (crear y destruir en bucle para detectar fugas / leaks o quedarse sin frames)
-static void test_stress_memory() {
-    int i;
-    char msg[32];
-    
-    for (i = 0; i < 2000; i++) {
+//Test de estrés de memoria (crear y destruir en bucle para detectar fugas / leaks o quedarse sin frames)
+void test_stress_memory() {
+    int i;    
+    for (i = 0; i < 5000; i++) {
         int pid = fork();
         if (pid < 0) {
             write(1, "¡ERROR: Agotamiento de memoria (Sin frames)! Fuga detectada.\n", 59);
@@ -117,7 +129,7 @@ static void test_stress_memory() {
             write(1, "Soy proceso con PID = ", 22);
             int p = getpid();
             itoa(p, buff);
-            write(1, buff, 4);
+            write(1, buff, 5);
             write(1, "\n", 1);
             // El hijo muere instantáneamente liberando sus recursos
             exit();
@@ -128,15 +140,98 @@ static void test_stress_memory() {
     exit();
 }
 
+void test_nested_fork_loop() {
+    char buff[20];
+    int niveles = 3;
+
+    write(1, "INICIO TEST BUCLE FORK ANIDADADO\n", 33);
+
+    for (int i = 0; i < niveles; i++) {
+        int pid = fork();
+        if (pid < 0) {
+            write(1, "Error en fork anidado\n", 22);
+            perror();
+            exit();
+        }
+        
+        if (pid == 0) {
+            // Cada hijo recién creado imprime su nivel y continúa el bucle para crear su propio hijo
+            write(1, "Proceso en nivel ", 18);
+            int p = getpid();
+            itoa(p, buff);
+            write(1, buff, 2);
+            write(1, "\n", 1);
+        } else {
+            // El padre de esta iteración rompe el bucle o espera para no duplicar ramas descontroladamente
+            break; 
+        }
+    }
+
+    for(int d = 0; d < 100000; d++);
+
+    write(1, "Proceso finalizando\n", 20);
+    exit();
+}
+
+void recursive_test(int depth){
+    if(depth == 0) return;
+    for(int i = 0; i < 3; i++){
+        int pid = fork();
+        if(pid < 0){
+            write(1, "Error en fork anidado\n", 22);
+            perror();
+            exit();
+        }
+        if(pid == 0){
+            write(1, "Soy proceso con PID = ", 22);
+            int p = getpid();
+            itoa(p, buff);
+            write(1, buff, 2);
+            write(1, "\n", 1);
+            itoa(depth, buff);
+            write(1, buff, 2);
+            write(1, "\n", 1);
+            recursive_test(depth - 1);
+            exit();
+        }
+
+    }
+}
+
+//Test de padre muriendo antes que los hijos
+void test_parent_dies_first() {
+    char buff[20];
+
+    write(1, "INICIO TEST PADRE MUERE ANTES\n", 30);
+
+    int pid = fork();
+    if (pid < 0) {
+        write(1, "Error en fork\n", 14);
+        perror();
+        exit();
+    }
+
+    if (pid == 0) {
+        for (int d = 0; d < 150000; d++){}
+
+        write(1, "Hijo sigue vivo despues de que el padre muriera. PID = ", 55);
+        int p = getpid();
+        itoa(p, buff);
+        write(1, buff, 2);
+        write(1, "\n", 1);
+        
+        write(1, "FIN TEST PADRE MUERE ANTES\n", 26);
+        exit();
+    } else {
+        write(1, "Padre imprimiendo y muriendo inmediatamente...\n", 48);
+        exit();
+    }
+}
+
 
 int __attribute__ ((__section__(".text.main")))
   main(void)
 {
-	//result = add(6, 47818);
-	//result = add(51914, 51914);
-    /* Next line, tries to move value 0 to CR3 register. This register is a privileged one, and so it will raise an exception */
-     /* __asm__ __volatile__ ("mov %0, %%cr3"::"r" (0) ); */
-
 	//asm_result = addAsm(result, 51914);
   char *message = "Hello World from ZeOS!\n";
   write(1, message, strlen(message));
@@ -205,10 +300,15 @@ int __attribute__ ((__section__(".text.main")))
   write(1, time_message, strlen(time_message));
   write(1, "\n", 1);
 
+  //test_cyclic_printing(); //test escriptura loop
+
   //JUEGOS DE PRUEBA->DESCOMENTAR EL DESEADO
-  //test_basic_fork();
+  test_basic_fork();
   //test_nested_fork();
-  test_stress_memory();
+  //test_stress_memory();
+  //test_nested_fork_loop();
+  //recursive_test(3);
+  //test_parent_dies_first();
 
   while(1) { }
 }
