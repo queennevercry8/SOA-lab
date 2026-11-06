@@ -11,7 +11,10 @@ char initial_stack[KERNEL_STACK_SIZE] __attribute__ ((aligned(4096))); // Space 
 struct task_struct * init_task;  
 struct task_struct * idle_task;
 struct list_head readyqueue;
+struct list_head zombiequeue;
 
+/* Ticks remaining for the process currently running on the CPU */
+static int ticks_left;
 
 void cpu_idle(void)
 {
@@ -41,6 +44,11 @@ void init_idle (void)
 	set_ss_pag(PT0, PCBframe, PCBframe, 0); //mapping PCB to system PT
 	idlePCB->PID = 0; //assigning PID 0 to the idle process
 	idlePCB->dir_pages_baseAddr = DirAddress_idle; //initialize directory with DirAddress_idle
+
+	idlePCB->state = ST_READY; //idle is not running yet
+	idlePCB->quantum = DEFAULT_QUANTUM;
+	INIT_LIST_HEAD(&idlePCB->list); //idle is never inserted into readyqueue
+
 
 	//PREPARE STACK
 	/*
@@ -94,6 +102,10 @@ void init_task1(void)
 	set_ss_pag(PT0, PCBframe, PCBframe, 0); //mapping PCB to system PT
 	newPCB->PID = 1; //assigning PID 1 to the first process
 
+	newPCB->state = ST_RUN; //init is the process currently running
+	newPCB->quantum = DEFAULT_QUANTUM;
+	INIT_LIST_HEAD(&newPCB->list);
+
 	tss.esp0 = KERNEL_ESP((union task_union *) (newPCB));
 	newPCB->dir_pages_baseAddr = DirAddress;//initialize the directory 
 	set_cr3(DirAddress); //make it the current page directory
@@ -104,6 +116,8 @@ void init_sched()
 {
 	global_pid = 2;
 	INIT_LIST_HEAD(&readyqueue);
+	INIT_LIST_HEAD(&zombiequeue);
+	ticks_left = DEFAULT_QUANTUM;
 }
 
 /* get_DIR - Returns the Page Directory address for task 't' */
@@ -134,4 +148,120 @@ void inner_task_switch(union task_union *new)
 	}
 	tss.esp0 = KERNEL_ESP(new); //update the system stack pointer to the one of the new task
 	set_esp(new->task.kernel_esp);
+}
+
+/* Libera los PCB de procesos ya muertos. Se llama desde otro contexto,
+   así que el frame que liberamos no es la pila actual. */
+void free_zombies(void)
+{
+	if (list_empty(&zombiequeue))
+        return;
+	
+    page_table_entry *sysPT = get_PT(current());
+
+    while (!list_empty(&zombiequeue)) {
+        struct list_head *l = list_first(&zombiequeue);
+        struct task_struct *z = list_head_to_task_struct(l);
+        int frame = ((unsigned long)z) >> 12;
+
+        list_del(l);
+        del_ss_pag(sysPT, frame);   /* quitar el mapeo identidad del PCB */
+        free_frame(frame);          /* liberar el frame del PCB/pila */
+    }
+}
+
+/* get_quantum - Returns the quantum of task 't' */
+int get_quantum(struct task_struct *t)
+{
+	return t->quantum;
+}
+
+/* set_quantum - Changes the quantum of task 't' */
+void set_quantum(struct task_struct *t, int new_quantum)
+{
+	if (new_quantum > 0)
+		t->quantum = new_quantum;
+}
+
+/* update_sched_data_rr - Updates the ticks left of the current process */
+void update_sched_data_rr(void)
+{
+	if (current() != idle_task && ticks_left > 0)
+		--ticks_left;
+}
+
+/* update_process_state_rr - Moves 't' to the queue for its new state.
+   dst_queue == NULL means that the process is going to run. */
+void update_process_state_rr(struct task_struct *t, struct list_head *dst_queue)
+{
+	if (t->state != ST_RUN)
+		list_del(&t->list);
+
+	if (dst_queue != NULL) {
+		list_add_tail(&t->list, dst_queue);
+		if (dst_queue == &readyqueue)
+			t->state = ST_READY;
+		else
+			t->state = ST_BLOCKED;
+	}
+	else {
+		t->state = ST_RUN;
+	}
+}
+
+/* needs_sched_rr - Returns 1 if a context switch is required */
+int needs_sched_rr(void)
+{
+	if (list_empty(&readyqueue))
+		return 0;
+
+	/* The idle process must leave the CPU as soon as a process is ready */
+	if (current() == idle_task)
+		return 1;
+
+	return (ticks_left <= 0);
+}
+
+/* sched_next_rr - Selects the next process and performs the context switch */
+void sched_next_rr(void)
+{
+	struct task_struct *next;
+
+	if (!list_empty(&readyqueue)) {
+		next = list_head_to_task_struct(list_first(&readyqueue));
+		list_del(&next->list);
+	}
+	else {
+		/* There is no ready process: run the idle process */
+		next = idle_task;
+	}
+
+	next->state = ST_RUN;
+	ticks_left = get_quantum(next);
+
+	task_switch((union task_union *)next);
+}
+
+void schedule(void)
+{
+	struct task_struct *cur;
+
+	free_zombies();  
+
+	update_sched_data_rr();
+
+	if (!needs_sched_rr())
+		return;
+
+	cur = current();
+
+	if (cur == idle_task) {
+		/* The idle process is never inserted into readyqueue */
+		idle_task->state = ST_READY;
+	}
+	else {
+		update_process_state_rr(cur, &readyqueue);
+	}
+
+	sched_next_rr();
 }
