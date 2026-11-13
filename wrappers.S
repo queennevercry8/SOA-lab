@@ -106,3 +106,14 @@ np:
     popl %ebp
 
     ret  
+    
+ENTRY(exit)
+    pushl %ebp
+    movl %esp, %ebp
+
+    movl $1, %eax
+    int $0x93
+
+    movl %ebp, %esp
+    popl %ebp
+    ret

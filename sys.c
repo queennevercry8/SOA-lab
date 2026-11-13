@@ -13,6 +13,8 @@
 
 #include <sched.h>
 
+#include <errno.h>
+
 #define LECTURA 0
 #define ESCRIPTURA 1
 
@@ -87,15 +89,16 @@ int sys_getpid(void){
   return current()->PID;
 }
 
-int sys_fork(void){
+
+int sys_fork(void){ 
+
+  page_table_entry *sysPT = (page_table_entry *) (current()->dir_pages_baseAddr[0].bits.pbase_addr << 12);
+
   //1. Allocate frame for task struct
   int taskFrameID = alloc_frame();
-  if(taskFrameID == -1){
-    errno = ENOMEM;
-    return -1;
-  }
+  if(taskFrameID == -1) return -ENOMEM;
+  set_ss_pag(sysPT, taskFrameID, taskFrameID, 0); 
   union task_union *childunion = (union task_union *) (taskFrameID << 12);
-  //struct task_struct  *childPCB = &(childunion->task); 
   
   //inherit system data by copying the parent's task_union
   copy_data(current(), childunion, sizeof(union task_union));
@@ -103,9 +106,11 @@ int sys_fork(void){
   //2. Allocate frame for page directory
   int PDframeID = alloc_frame();
   if(PDframeID == -1 ){
-    errno = ENOMEM;
-    return -1;
+    del_ss_pag(sysPT, taskFrameID);
+    free_frame(taskFrameID);
+    return -ENOMEM;
   }
+  set_ss_pag(sysPT, PDframeID, PDframeID, 0);
   page_table_entry *PageDir = (page_table_entry *) (PDframeID << 12);
   clear_page_table(PageDir);
 
@@ -114,7 +119,7 @@ int sys_fork(void){
   /* ALTERNATIVA DIAPOSITIVAS
     int childPTSframe = alloc_frame();
     if (childPTSframe == -1){
-      errno = ENOMEM;
+      errno = 12;
       return -1;
     }
     page_table_entry *ChildPT = (page_table_entry *)(childPTSframe << 12);
@@ -133,51 +138,128 @@ int sys_fork(void){
   */
   
   PageDir[0].entry = current()->dir_pages_baseAddr[0].entry;
-  
-  childunion->task.dir_pages_baseAddr = PageDir;
 
   //2.2. Inherit user data
   int childPTframe = alloc_frame();
   if(childPTframe == -1){
-    errno = ENOMEM;
-    return -1;
+    del_ss_pag(sysPT, taskFrameID);
+    del_ss_pag(sysPT, PDframeID);
+    free_frame(taskFrameID);
+    free_frame(PDframeID);
+    return -ENOMEM;
   }
+  set_ss_pag(sysPT, childPTframe, childPTframe, 0);
   page_table_entry *childPTU = (page_table_entry *)(childPTframe << 12);
+  clear_page_table(childPTU);
   
-  page_table_entry *parentPTU = current()->dir_pages_baseAddr[1];
+  set_ss_pag(PageDir, 1, childPTframe, 1);
+  childunion->task.dir_pages_baseAddr = PageDir;
+
+  page_table_entry *parentPTU = (page_table_entry *)(current()->dir_pages_baseAddr[1].bits.pbase_addr << 12);  
   //2.2.1.Map user code
   for(int i = NUM_PAG_DATA; i < NUM_PAG_DATA + NUM_PAG_CODE; i++){
     set_ss_pag(childPTU, i, get_frame(parentPTU, i), 1 );
+    childPTU[i].bits.rw = 0; //only read just in case
   }
+
 
   //2.2.2. Map data + stack in new frames
-  //TO FINISH I AM TIRED PLS END THIS SUFFERING
-
   int tmpmapping = NUM_PAG_CODE + NUM_PAG_DATA;
+  int frames[NUM_PAG_DATA];
 
-  for(int i = 0; i<NUM_PAG_DATA; i++){
-
-    int frame = alloc_frame(); //reservar frame físico
-    if(frame == -1){
-      errno = NOMEM;
-      return -1;
+  for(int i = 0; i < NUM_PAG_DATA; i++){
+    frames[i] = alloc_frame(); 
+    if(frames[i] == -1){
+      del_ss_pag(sysPT, taskFrameID);
+      del_ss_pag(sysPT, PDframeID);
+      del_ss_pag(sysPT, childPTframe);
+      free_frame(taskFrameID);
+      free_frame(PDframeID);
+      free_frame(childPTframe);
+      for(int j = 0; j < i; j++) free_frame(frames[j]);
+      return -ENOMEM;
     }
 
-    set_ss_pag(childPTU, i, frame, 1); //mapear en la tabla del hijo el frame físico
+    // Map in child PT
+    set_ss_pag(childPTU, i, frames[i], 1); 
 
-    set_ss_pag(parentPTU, tmpmapping, frame, 1 );
+    set_ss_pag(parentPTU, tmpmapping + i, frames[i], 1);
 
-    char *src_addr = (char *) ((0x400 + i) << 12);
-    char *dest_addr = (char *) ((0x400 + tmpmapping) << 12);
-    copy_data(src_addr, dest_addr, 4096);
-    del_ss_pag(parentPTU, tmpmapping);
+    copy_data((void *)(L_USER_START + i * PAGE_SIZE),
+              (void *)(L_USER_START + ((tmpmapping + i) * PAGE_SIZE)), PAGE_SIZE);
+
+    del_ss_pag(parentPTU, tmpmapping + i);
   }
-
+  
   set_cr3(current()->dir_pages_baseAddr);
   
   int newpid = global_pid++;        //hay que poner robustez a las colisiones
   childunion->task.PID = newpid;
 
+
+
+  /* 9. Forjar el contexto de retorno del hijo (fork devuelve 0) */
+  unsigned long *ksp = (unsigned long *) KERNEL_ESP(childunion);
+  ksp[-18] = 0;                               // EBP falso
+  ksp[-17] = (unsigned long)ret_from_fork;    // retorno de set_esp
+  ksp[-10] = 0;                               // EAX guardado = 0
+  childunion->task.kernel_esp = (unsigned long *)&ksp[-18];
+
+  /* 10. Estado y cola */
+  childunion->task.state = ST_READY;
+  childunion->task.quantum = current()->quantum;
+  INIT_LIST_HEAD(&childunion->task.list);
+  list_add_tail(&childunion->task.list, &readyqueue);
+
+  return newpid;
   
-  
+}
+
+
+void sys_exit(void)
+{
+    struct task_struct *t = current();
+    page_table_entry *sysPT = get_PT(t);
+    page_table_entry *dir = t->dir_pages_baseAddr;
+    int dir_frame = ((unsigned long)dir) >> 12;
+    int ptu_frame = dir[1].bits.pbase_addr;
+
+    /* Si por lo que sea estuviera en una cola, sacarlo. */
+    if (t->state != ST_RUN && t->list.next != 0)
+        list_del(&t->list);
+
+    /* 1. Datos + pila de usuario */
+    if (ptu_frame != 0) {
+        page_table_entry *ptu = (page_table_entry *)(ptu_frame << 12);
+
+        for (int i = 0; i < NUM_PAG_DATA; i++) {
+            int frame = get_frame(ptu, i);
+            if (frame != 0) {
+                del_ss_pag(ptu, i);
+                del_ss_pag(sysPT, frame);
+                free_frame(frame);
+            }
+        }
+
+        /* 2. PT de usuario */
+        del_ss_pag(dir, 1);
+        del_ss_pag(sysPT, ptu_frame);
+        free_frame(ptu_frame);
+    }
+
+    /* 3. Directorio de páginas */
+    del_ss_pag(sysPT, dir_frame);
+    free_frame(dir_frame);
+
+    /* 4. El PCB no se puede liberar todavía: es nuestra pila.
+          Lo dejamos apuntado para que otro lo libere. */
+    t->state = ST_BLOCKED;
+    list_add_tail(&t->list, &zombiequeue);
+
+    /* 5. Elegir otro proceso y cambiar de contexto.
+          Esto NO vuelve a este proceso. */
+    sched_next_rr();
+
+    /*Por si falla*/
+    while (1);
 }

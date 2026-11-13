@@ -133,3 +133,7 @@ ENTRY(set_esp)
       movl 8(%ebp), %esp   
       popl %ebp            
       ret
+
+ENTRY(ret_from_fork)
+      RESTORE_ALL
+      iret
