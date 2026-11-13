@@ -124,6 +124,13 @@ void pf_routine(page_fault_stack_t *stack){
 	while(1);
 }
 
+void write_buffer(unsigned char key){
+  cajita.buffer[cajita.idx_esc] = key;
+  cajita.idx_esc++;
+  if(cajita.idx_esc == N) cajita.idx_esc = 0;
+  if(cajita.n_char < N) cajita.n_char++;
+}
+
 void keyboard_routine() {
     unsigned char scan_code;
     unsigned char key;
@@ -140,6 +147,8 @@ void keyboard_routine() {
 
         /* If the key is not a printable ASCII character, show 'C' */
         if (key == 0 || key < 32 || key > 126) key = 'C';
+        //meterlo en el buffer circular
+        write_buffer(key);
         printc_xy(0, 0, key);
     }
 }

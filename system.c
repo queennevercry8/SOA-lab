@@ -61,6 +61,8 @@ int __attribute__((__section__(".text.main")))
 
   set_pe_flag();
 
+  init_buffer_circular();
+
   /* Move user code/data now (after the page table initialization) */
   copy_data((void *) KERNEL_START + *p_sys_size, (void*)L_USER_START, *p_usr_size);
 
